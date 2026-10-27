@@ -114,3 +114,42 @@ def http_host(port: int, hote: str, chemin: str = "/") -> int:
         return reponse.status
     finally:
         conn.close()
+
+
+@pytest.fixture
+def srv_multi(docs: Path, tmp_path: Path):
+    """Deux montages : /premier et /second, une seule instance."""
+    second = tmp_path / "second"
+    (second / "sub").mkdir(parents=True)
+    (second / "guide2.md").write_text("# Guide 2\n\n[Intro 2](sub/intro2.md)\n", encoding="utf-8")
+    (second / "sub" / "intro2.md").write_text("# Intro 2\n", encoding="utf-8")
+    config = tmp_path / "config.toml"
+    config.write_text(
+        "[server]\nport = 9999\n\n"
+        '[[mounts]]\nname = "premier"\npath = %r\nlabel = "Premier"\n\n'
+        '[[mounts]]\nname = "second"\npath = %r\nlabel = "Second"\n' % (str(docs), str(second)),
+        encoding="utf-8",
+    )
+    settings = make_settings(
+        config_path=str(config),
+        port=0,
+        config_dir=str(tmp_path / "config-multi"),
+        cache_dir=str(tmp_path / "cache-multi"),
+    )
+    state = State(settings)
+    httpd = make_server(state)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    base = "http://127.0.0.1:%d" % state.port
+    yield SimpleNamespace(
+        httpd=httpd,
+        state=state,
+        base=base,
+        root=docs,
+        second=second,
+        port=state.port,
+        thread=thread,
+    )
+    httpd.shutdown()
+    httpd.server_close()
+    thread.join(timeout=5)

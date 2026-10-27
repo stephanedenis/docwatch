@@ -3,6 +3,38 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique.
 
+## [0.4.0] — 2026-10-27
+
+### Ajouté
+
+- **configuration multi-racines** dans `$XDG_CONFIG_HOME/docwatch/config.toml` :
+  une instance sert plusieurs dépôts, chaque `[[mounts]]` portant un nom et un
+  chemin ; les URLs deviennent `/<montage>/docs/guide.md` ;
+- routes `/mounts` et `/status` (liste des montages), liens de montage dans le
+  panneau de gauche, changement de dépôt par navigation ;
+- épingles et filtre temporel par montage (`/pins?root=…`, `/recent?root=…`) ;
+- options `--config`, `--init-config`, `--force`, `--mount` ;
+- **génération des diagrammes** PlantUML et Mermaid en SVG :
+  - fichiers `.puml`, `.pu`, `.plantuml`, `.mmd`, `.mermaid` → `<source>.svg`
+    en conservant l'extension en affixe (`diagram.puml` → `diagram.puml.svg`) ;
+  - blocs Markdown ```` ```puml ````, ```` ```plantuml ````, ```` ```mmd ````,
+    ```` ```mermaid ```` → cache `<hash>.<affixe>.svg` et route
+    `/diagram/<hash>.<affixe>.svg` ;
+  - `viewBox`, `<title>` et `<desc>` ajoutés à la racine des SVG ;
+  - génération à la demande pour `/asset`, et surveillance périodique des
+    montages pour produire les SVG des sources ;
+  - un outil absent ou une erreur laisse le bloc de code intact ;
+- réglages `[diagrams]` (`enabled`, `plantuml`, `mermaid`, `timeout`,
+  `puppeteer`).
+
+### Modifié
+
+- `page_html` reçoit la liste des montages ; le panneau de gauche affiche les
+  dépôts quand il y en a plusieurs ;
+- la restriction de racine est purement locale au client, les routes recevant
+  des chemins absolus bornés par les montages ;
+- 87 tests, dont la génération PlantUML/Mermaid avec des outils factices.
+
 ## [0.3.0] — 2026-10-27
 
 ### Ajouté

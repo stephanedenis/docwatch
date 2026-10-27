@@ -2,7 +2,9 @@
 
 Le CSS et le JavaScript sont des fichiers statiques du paquet, extraits du
 script d'origine pour rester éditables et testables séparément. Le gabarit ne
-contient que l'initialisation de la page.
+contient que l'initialisation de la page : la liste des montages est injectée,
+puis ``demarrer()`` (dans ``tree.js``) choisit le montage et le document à
+partir de l'URL.
 """
 
 from __future__ import annotations
@@ -11,6 +13,10 @@ import html
 import json
 import os
 from importlib.resources import files
+from typing import Sequence
+from urllib.parse import quote
+
+from .config import Mount
 
 
 def _lire_statique(nom: str) -> str:
@@ -21,14 +27,31 @@ CSS = _lire_statique("style.css")
 TREE_JS = _lire_statique("tree.js")
 
 
-def page_html(root: str) -> str:
+def page_html(mounts: Sequence[Mount], root: str) -> str:
+    liens = ""
+    if len(mounts) > 1:
+        liens = "".join(
+            '<a class="mount" href="/%s/" title="%s">%s</a>'
+            % (
+                quote(m.name),
+                html.escape(m.path),
+                html.escape(m.label or m.name),
+            )
+            for m in mounts
+        )
+    # JSON injecte dans un <script> : on neutralise une eventuelle chaine
+    # </script> dans un libelle de montage.
+    mounts_json = json.dumps([m.as_dict() for m in mounts]).replace("</", "<\\/")
+    titre = html.escape(os.path.basename(root) or "docwatch")
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>docwatch \u2014 {html.escape(os.path.basename(root))}</title>
+<title>docwatch \u2014 {titre}</title>
 <style>{CSS}</style></head><body>
 <div id="wrap">
   <div id="side">
+    <div id="mounts">{liens}</div>
     <div class="hint">Cliquez un dossier pour le deplier. Survolez-le et cliquez
-      ○ pour l'epingler. Les fichiers ne sont jamais modifies.</div>
+      ○ pour l'epingler. Les documents sont servis en lecture seule ; seules les
+      epingles et les SVG de diagrammes generes s'ecrivent.</div>
     <div id="pins"></div>
     <div id="treehead">
       <h3>🗂 Arborescence</h3>
@@ -74,46 +97,6 @@ def page_html(root: str) -> str:
 </div>
 <script>
 {TREE_JS}
-// charge le premier niveau au demarrage
-(async () => {{
-  currentRoot = {json.dumps(root)};
-  try {{                              // perimetre autorise, pour la barre
-    const rr = await fetch('/root');
-    const dd = await rr.json();
-    borne = dd.borne || dd.root || currentRoot;
-    if (dd.root) currentRoot = dd.root;
-  }} catch (e) {{ borne = currentRoot; }}
-  setSort(sortMode);                   // applique la preference enregistree
-  toggleSoundIfNeeded();
-  await loadPins(true);        // premier passage : nettoie les disparues
-  const r = await fetch('/tree?path=' + encodeURIComponent(currentRoot));
-  const data = await r.json();
-  const tree = document.getElementById('tree');
-  // l'horloge du serveur au chargement sert de reference : tout ce qui est
-  // modifie apres est signale comme « change depuis l'ouverture »
-  loadedAt = data.now || 0;
-  trackEntries(data.files);
-  rememberMtimes(data.files); rememberMtimes(data.dirs);
-  rememberSubdirs(data.dirs);
-  tree._data = data;                   // memorise pour pouvoir re-trier
-  renderBox(tree, data);
-  tree.dataset.loaded = '1';
-  displayedDirs.add(currentRoot);
-  for (const d of (data.dirs || [])) displayedDirs.add(d.path);
-  paintRootbar();
-  // la racine n'est pas « depliee » : on ne scrute pas ses 39 enfants
-  paintUnseen();
-  // ouverture directe : URL propre /docs/guide.md, ou ancienne /?f=/abs
-  let cible = null;
-  if (location.pathname.toLowerCase().endsWith('.md')) {{
-    cible = resoudreLien(location.pathname);
-  }} else {{
-    cible = new URLSearchParams(location.search).get('f');
-  }}
-  if (cible) {{
-    const up = cible.lastIndexOf('/');
-    if (up > 0) await expandTo(cible.slice(0, up));   // devoile le chemin
-    await openFile(cible, null, false, {{replace: true, hash: location.hash}});
-  }}
-}})();
+const MOUNTS = {mounts_json};
+(async () => {{ await demarrer(); }})();
 </script></body></html>"""

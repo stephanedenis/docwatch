@@ -10,15 +10,16 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 import urllib.parse
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, Optional, Type
 
-from . import __version__
+from . import __version__, diagrams
 from .config import State
-from .paths import safe_bounded, safe_path
+from .paths import safe_bounded
 from .pins import load_pins, pins_action, pins_for_root, pins_with_mtime, prune_pins
 from .render import (
     ALLOWED_ASSET_SUFFIXES,
@@ -122,11 +123,14 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
             q = urllib.parse.parse_qs(u.query)
 
             if u.path == "/":
-                return self._send(200, page_html(state.root), "text/html; charset=utf-8")
+                return self._send(
+                    200, page_html(state.mounts, state.root), "text/html; charset=utf-8"
+                )
 
             if u.path == "/tree":
                 raw = (q.get("path") or [""])[0]
-                p = safe_path(raw, state.root)
+                cible = state.resolve_path(raw)
+                p = cible[1] if cible else None
                 if not p or not os.path.isdir(p):
                     return self._send(404, {"error": "dossier invalide"})
                 dirs, files = list_dir(p, state.settings.exclude)
@@ -136,7 +140,14 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
 
             if u.path == "/asset":
                 # Sert un fichier de la racine avec SON type (images, styles, pdf).
-                p = safe_path((q.get("path") or [""])[0], state.root)
+                cible = state.resolve_path((q.get("path") or [""])[0])
+                p = cible[1] if cible else None
+                # Un SVG généré peut manquer (ou être plus ancien que sa source) :
+                # on le (re)génère à la demande, puis on le sert normalement.
+                if p and p.lower().endswith(".svg"):
+                    source = p[:-4]
+                    if diagrams.est_source(source):
+                        diagrams.generer_fichier_source(source, state.settings.diagrams)
                 if not p or not os.path.isfile(p):
                     return self._send(404, {"error": "fichier introuvable"})
                 if os.path.basename(p).startswith("."):
@@ -150,17 +161,25 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
 
             if u.path == "/render":
                 raw = (q.get("path") or [""])[0]
-                p = safe_path(raw, state.root)
-                if not p or not os.path.isfile(p) or not p.lower().endswith(".md"):
+                cible = state.resolve_path(raw)
+                if not cible:
+                    return self._send(404, {"error": "fichier invalide"})
+                montage, p = cible
+                if not os.path.isfile(p) or not p.lower().endswith(".md"):
                     return self._send(404, {"error": "fichier invalide"})
                 force = (q.get("force") or ["0"])[0] == "1"
                 t0 = time.perf_counter()
                 try:
-                    body, hit = cached_render(p, state.settings.cache_dir, force=force)
+                    body, hit = cached_render(
+                        p,
+                        state.settings.cache_dir,
+                        force=force,
+                        diagrammes=state.settings.diagrams,
+                    )
                 except Exception as exc:  # noqa: BLE001 - on renvoie l'erreur au client
                     return self._send(500, {"error": "%s: %s" % (type(exc).__name__, exc)})
                 ms = round((time.perf_counter() - t0) * 1000)
-                body = reecrire_assets(body, os.path.dirname(p), state.root, state.initial_root)
+                body = reecrire_assets(body, os.path.dirname(p), montage.path, montage.path)
                 out: Dict[str, Any] = {"body": body, "path": p, "ms": ms, "cache": hit}
                 info = stat_info(p) or {}
                 # Le jeton reste côté client pour les contrôles suivants ; il
@@ -177,7 +196,8 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
                 # renvoie les jetons reçus au dernier rendu ; la comparaison se
                 # fait ici, à pleine précision.
                 raw = (q.get("path") or [""])[0]
-                p = safe_path(raw, state.root)
+                cible = state.resolve_path(raw)
+                p = cible[1] if cible else None
                 if not p or not os.path.isfile(p):
                     return self._send(404, {"error": "fichier absent"})
                 try:
@@ -188,14 +208,18 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
                 return self._send(200, freshness(p, token, dir_token))
 
             if u.path == "/pins":
+                cible = state.resolve_root((q.get("root") or [state.root])[0])
+                if not cible:
+                    return self._send(400, {"error": "racine invalide"})
+                racine = cible[1]
                 if (q.get("prune") or ["0"])[0] == "1":
-                    retires = prune_pins(state.pins_file, state.root)
+                    retires = prune_pins(state.pins_file, racine)
                 else:
                     retires = []
-                visibles = pins_for_root(load_pins(state.pins_file), state.root)
+                visibles = pins_for_root(load_pins(state.pins_file), racine)
                 return self._send(
                     200,
-                    {"pins": pins_with_mtime(visibles), "retires": retires, "racine": state.root},
+                    {"pins": pins_with_mtime(visibles), "retires": retires, "racine": racine},
                 )
 
             if u.path == "/recent":
@@ -205,8 +229,12 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
                     heures = 24.0
                 heures = max(0.05, min(heures, 24 * 365))
                 force = (q.get("force") or ["0"])[0] == "1"
+                cible = state.resolve_root((q.get("root") or [state.root])[0])
+                if not cible:
+                    return self._send(400, {"error": "racine invalide"})
+                racine = cible[1]
                 elements, tronque = _recent_cache(
-                    state.root, heures, state.settings.exclude, force=force
+                    racine, heures, state.settings.exclude, force=force
                 )
                 return self._send(
                     200,
@@ -214,27 +242,65 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
                         "heures": heures,
                         "elements": elements,
                         "tronque": tronque,
-                        "arbre": arbre_recent(elements, state.root),
-                        "racine": state.root,
+                        "arbre": arbre_recent(elements, racine),
+                        "racine": racine,
                         "maintenant": int(time.time()),
                     },
                 )
 
             if u.path == "/root":
-                return self._send(200, {"root": state.root, "borne": state.initial_root})
+                return self._send(
+                    200,
+                    {
+                        "root": state.root,
+                        "borne": state.initial_root,
+                        "mounts": state.mounts_json(),
+                    },
+                )
+
+            if u.path == "/mounts":
+                return self._send(200, {"mounts": state.mounts_json()})
 
             if u.path == "/status":
-                return self._send(200, {"root": state.root, "port": state.port})
+                return self._send(
+                    200,
+                    {
+                        "root": state.root,
+                        "port": state.port,
+                        "mounts": [m.name for m in state.mounts],
+                    },
+                )
+
+            if u.path.startswith("/diagram/"):
+                info = diagrams.analyser_url_diagramme(u.path)
+                if not info:
+                    return self._send(404, {"error": "diagramme invalide"})
+                h, affixe = info
+                fichier = diagrams.chemin_cache(state.settings.cache_dir, h, affixe)
+                if not fichier:
+                    return self._send(404, {"error": "diagramme introuvable"})
+                with open(fichier, "rb") as f:
+                    return self._send(200, f.read(), "image/svg+xml")
+
+            # URL d'un dossier (racine d'un montage, sous-dossier) : la SPA
+            # affiche l'arbre correspondant. C'est ce que visent les liens de
+            # montage du panneau de gauche.
+            cible_dossier = state.mount_from_url(u.path)
+            if cible_dossier and os.path.isdir(cible_dossier[1]):
+                return self._send(
+                    200, page_html(state.mounts, state.root), "text/html; charset=utf-8"
+                )
 
             # URL propre d'un document : /docs/guide.md. Le serveur renvoie la
             # SPA, qui lit ce chemin et ouvre le fichier ; un rechargement, un
             # favori ou un lien partagé fonctionne donc sans JavaScript côté
             # serveur. La cible est validée sous la racine de départ.
             if u.path.lower().endswith(".md"):
-                brut = os.path.join(state.initial_root, u.path.lstrip("/"))
-                p = safe_path(brut, state.initial_root)
-                if p and os.path.isfile(p):
-                    return self._send(200, page_html(state.root), "text/html; charset=utf-8")
+                cible = state.mount_from_url(u.path)
+                if cible and os.path.isfile(cible[1]):
+                    return self._send(
+                        200, page_html(state.mounts, state.root), "text/html; charset=utf-8"
+                    )
                 return self._send(404, {"error": "document introuvable"})
 
             return self._send(404, {"error": "route inconnue"})
@@ -284,9 +350,10 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
 
             changed, missing = [], []
             for path, mtime in known.items():
-                p = safe_path(path, state.root)
-                if not p:
+                cible = state.resolve_path(path)
+                if not cible:
                     continue
+                p = cible[1]
                 try:
                     st = os.stat(p)
                 except OSError:
@@ -338,8 +405,9 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
             kind = payload.get("kind") or "folder"
             if action not in ("add", "remove", "toggle"):
                 return self._send(400, {"error": "action inconnue"})
-            # On épingle un dossier OU un document markdown, sous la racine servie.
-            p = safe_path(raw, state.root)
+            # On épingle un dossier OU un document markdown, sous un montage.
+            cible = state.resolve_path(raw)
+            p = cible[1] if cible else None
             if not p or not os.path.exists(p):
                 return self._send(400, {"error": "chemin hors racine ou inexistant"})
             if kind == "file":
@@ -383,8 +451,13 @@ def run(state: State, open_browser: bool = True) -> int:
     """Démarre le serveur et bloque jusqu'à Ctrl+C."""
     httpd = make_server(state)
     url = "http://127.0.0.1:%d/" % state.port
-    print("docwatch: %s" % state.root)
+    print("docwatch: %d montage(s)" % len(state.mounts))
+    for m in state.mounts:
+        print("  /%s  ->  %s" % (m.name, m.path))
     print("docwatch: %s   (Ctrl+C pour arreter)" % url)
+    stop = threading.Event()
+    if state.settings.diagrams.enabled:
+        threading.Thread(target=diagrams.surveiller, args=(state, stop), daemon=True).start()
     if open_browser:
         try:
             webbrowser.open(url)
@@ -395,5 +468,6 @@ def run(state: State, open_browser: bool = True) -> int:
     except KeyboardInterrupt:
         print("\ndocwatch: arret")
     finally:
+        stop.set()
         httpd.server_close()
     return 0

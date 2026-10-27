@@ -145,25 +145,22 @@ function paintRootbar() {
 }
 
 async function changerRacine(chemin) {
-  try {
-    const r = await fetch('/root', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({path: chemin}),
-    });
-    const data = await r.json();
-    if (data.error) { alert('Changement de racine refuse : ' + data.error); return; }
-    currentRoot = data.root;
-    borne = data.borne || borne;
-    // tout ce qui concernait l'ancienne racine devient caduc
-    knownMtimes.clear(); sousDirsConnus.clear(); displayedDirs.clear();
-    expandedDirs.clear(); unseen.clear(); unseenNames.clear(); unseenMtime.clear();
-    vusDirs.clear(); sousDirsIndex = 0;
-    lastBodyHash = null;
-    await rechargerArbre();
-    await rechargerPins();      // la liste depend de la racine affichee
-    if (recentActif) await recentCharger();   // le filtre suit la racine
-  } catch (e) { /* serveur injoignable */ }
+  // La restriction de la vue est purement locale : les routes /tree, /render
+  // et /asset recoivent un chemin absolu, deja borne par les montages.
+  const m = mountPourPath(chemin);
+  if (!m || !currentMount || m.name !== currentMount.name) {
+    alert('Ce dossier est hors du montage courant.');
+    return;
+  }
+  currentRoot = chemin;
+  // tout ce qui concernait l'ancienne racine devient caduc
+  knownMtimes.clear(); sousDirsConnus.clear(); displayedDirs.clear();
+  expandedDirs.clear(); unseen.clear(); unseenNames.clear(); unseenMtime.clear();
+  vusDirs.clear(); sousDirsIndex = 0;
+  lastBodyHash = null;
+  await rechargerArbre();
+  await rechargerPins();      // la liste depend de la racine affichee
+  if (recentActif) await recentCharger();   // le filtre suit la racine
 }
 
 // rechargement complet du premier niveau apres un changement de racine
@@ -783,6 +780,7 @@ async function refreshAll() {
 
 let currentRoot = '';
 let currentFile = null;
+let currentMount = null;      // montage courant (nom + chemin absolu)
 
 // --- tri ------------------------------------------------------------------
 // 'date' = plus recent d'abord (defaut) ; 'nom' = alphabetique.
@@ -825,7 +823,10 @@ function reorder() {
 
 async function loadPins(prune) {
   try {
-    const r = await fetch('/pins' + (prune ? '?prune=1' : ''));
+    const p = new URLSearchParams();
+    if (prune) p.set('prune', '1');
+    if (currentRoot) p.set('root', currentRoot);
+    const r = await fetch('/pins' + (p.toString() ? '?' + p.toString() : ''));
     const data = await r.json();
     signalerRetires(data.retires);
     renderPins(data.pins || {folders: [], files: []});
@@ -1000,8 +1001,10 @@ function recentArreter() {
 
 async function recentCharger(force) {
   try {
-    const r = await fetch('/recent?heures=' + encodeURIComponent(recentHeures) +
-                          (force ? '&force=1' : ''));
+    const p = new URLSearchParams({heures: String(recentHeures)});
+    if (force) p.set('force', '1');
+    if (currentRoot) p.set('root', currentRoot);
+    const r = await fetch('/recent?' + p.toString());
     const d = await r.json();
     if (d.error) return;
     noteServerNow(d.maintenant);
@@ -1325,6 +1328,29 @@ async function openFile(path, el, silent, options) {
 // Une URL propre est relative a la racine de depart : /docs/guide.md. Les
 // anciennes URL /?f=/chemin/absolu restent acceptees et sont normalisees.
 
+function listeMontages() {
+  return (typeof MOUNTS !== 'undefined' && MOUNTS) ? MOUNTS : [];
+}
+
+function mountParNom(nom) {
+  return listeMontages().find(m => m.name === nom) || null;
+}
+
+function mountPourPath(path) {
+  if (!path) return null;
+  let meilleur = null;
+  for (const m of listeMontages()) {
+    const base = (m.path || '').replace(/\/+$/, '');
+    if (path === base || path.startsWith(base + '/')) {
+      if (!meilleur || base.length >
+          (meilleur.path || '').replace(/\/+$/, '').length) {
+        meilleur = m;
+      }
+    }
+  }
+  return meilleur;
+}
+
 function resoudreLien(href) {
   if (!href || href.charAt(0) === '#') return null;
   if (/^[a-z][a-z0-9+.\-]*:/i.test(href) || href.slice(0, 2) === '//') return null;
@@ -1333,11 +1359,20 @@ function resoudreLien(href) {
   try {
     let base;
     if (chemin.charAt(0) === '/') {
-      base = (borne || currentRoot || '').replace(/\/+$/, '');
-      chemin = chemin.replace(/^\/+/, '');
+      const premier = chemin.replace(/^\/+/, '').split('/')[0];
+      const m = mountParNom(premier);
+      if (m) {
+        base = m.path;
+        chemin = chemin.replace(/^\/+/, '').slice(premier.length).replace(/^\/+/, '');
+        if (!chemin) return base.replace(/\/+$/, '');
+      } else {
+        base = (borne || currentRoot || '');
+        chemin = chemin.replace(/^\/+/, '');
+      }
     } else {
       base = (currentFile || '').replace(/\/[^/]*$/, '') || (currentRoot || '');
     }
+    base = base.replace(/\/+$/, '');
     const baseUrl = 'file://' + base.split('/').map(encodeURIComponent).join('/') + '/';
     const u = new URL(chemin, baseUrl);
     return decodeURIComponent(u.pathname);
@@ -1347,11 +1382,13 @@ function resoudreLien(href) {
 }
 
 function cheminRelatif(path) {
-  const base = (borne || '').replace(/\/+$/, '');
-  if (base && path.startsWith(base + '/')) {
-    return path.slice(base.length).split('/').map(encodeURIComponent).join('/');
-  }
-  return '/?f=' + encodeURIComponent(path);
+  const m = mountPourPath(path);
+  if (!m) return '/?f=' + encodeURIComponent(path);
+  const base = m.path.replace(/\/+$/, '');
+  const rel = path === base ? '' : path.slice(base.length).replace(/^\/+/, '');
+  const prefixe = listeMontages().length > 1 ? '/' + encodeURIComponent(m.name) : '';
+  if (!rel) return prefixe + '/';
+  return prefixe + '/' + rel.split('/').map(encodeURIComponent).join('/');
 }
 
 function urlDocument(path, hash) {
@@ -1381,10 +1418,71 @@ function defilerVers(hash) {
 }
 
 function fichierDepuisUrl() {
-  if (location.pathname.toLowerCase().endsWith('.md')) {
-    return resoudreLien(location.pathname);
+  const ms = listeMontages();
+  const brut = decodeURIComponent(location.pathname || '/');
+  if (ms.length > 1) {
+    const seg = brut.replace(/^\/+/, '').split('/');
+    const m = mountParNom(seg[0]);
+    if (m) {
+      const reste = seg.slice(1).join('/');
+      return reste ? m.path.replace(/\/+$/, '') + '/' + reste : null;
+    }
+  } else if (ms.length === 1) {
+    const reste = brut.replace(/^\/+/, '');
+    if (reste) return ms[0].path.replace(/\/+$/, '') + '/' + reste;
   }
   return new URLSearchParams(location.search).get('f');
+}
+
+async function demarrer() {
+  const ms = listeMontages();
+  if (!ms.length) return;
+  const brut = decodeURIComponent(location.pathname || '/');
+  let m = ms[0];
+  let cible = null;
+  if (ms.length > 1) {
+    const seg = brut.replace(/^\/+/, '').split('/');
+    const trouve = mountParNom(seg[0]);
+    if (trouve) {
+      m = trouve;
+      const reste = seg.slice(1).join('/');
+      if (reste) cible = m.path.replace(/\/+$/, '') + '/' + reste;
+    } else if (brut !== '/') {
+      // Ancienne URL sans prefixe : le premier montage est le candidat naturel.
+      cible = m.path.replace(/\/+$/, '') + '/' + brut.replace(/^\/+/, '');
+    }
+  } else if (brut !== '/') {
+    cible = m.path.replace(/\/+$/, '') + '/' + brut.replace(/^\/+/, '');
+  }
+  const f = new URLSearchParams(location.search).get('f');
+  if (f) {
+    cible = f;
+    const mm = mountPourPath(f);
+    if (mm) m = mm;
+  }
+  currentMount = m;
+  currentRoot = m.path;
+  borne = m.path;
+  if (cible && cible.endsWith('/')) {
+    // URL d'un dossier : il devient la racine de l'arbre, sans document ouvert.
+    currentRoot = cible.replace(/\/+$/, '') || m.path;
+    cible = null;
+  }
+  if (ms.length > 1) {
+    const prefixe = '/' + encodeURIComponent(m.name) + '/';
+    if (!location.pathname.startsWith(prefixe)) {
+      history.replaceState({path: '', mount: m.name}, '', prefixe + location.hash);
+    }
+  }
+  setSort(sortMode);                   // applique la preference enregistree
+  toggleSoundIfNeeded();
+  await loadPins(true);                // premier passage : nettoie les disparues
+  await rechargerArbre();
+  if (cible) {
+    const up = cible.lastIndexOf('/');
+    if (up > 0) await expandTo(cible.slice(0, up));   // devoile le chemin
+    await openFile(cible, null, false, {replace: true, hash: location.hash});
+  }
 }
 
 function pageAccueil() {
@@ -1426,6 +1524,8 @@ function installerNavigation() {
     if (!u.pathname.toLowerCase().endsWith('.md')) return;
     const cible = resoudreLien(href);
     if (!cible) return;
+    const cm = mountPourPath(cible);
+    if (cm && currentMount && cm.name !== currentMount.name) return;  // navigation complete
     ev.preventDefault();
     openFile(cible, null, false, {hash: u.hash, push: true});
   });

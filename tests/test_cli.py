@@ -14,7 +14,7 @@ def test_version(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert "0.3.0" in capsys.readouterr().out
+    assert "0.4.0" in capsys.readouterr().out
 
 
 def test_liste_epingles_vide(tmp_path: Path, capsys):
@@ -50,3 +50,14 @@ def test_docopen_racine_commune(tmp_path: Path):
     a = tmp_path / "a" / "x.md"
     b = tmp_path / "a" / "sub" / "y.md"
     assert _racine_commune([str(a), str(b)]) == str(tmp_path / "a")
+
+
+def test_init_config(tmp_path: Path, capsys):
+    chemin = tmp_path / "docwatch" / "config.toml"
+    assert main(["--init-config", "--config", str(chemin), str(tmp_path)]) == 0
+    contenu = chemin.read_text(encoding="utf-8")
+    assert "[[mounts]]" in contenu
+    assert "[diagrams]" in contenu
+    # sans --force, on refuse d'écraser
+    assert main(["--init-config", "--config", str(chemin), str(tmp_path)]) == 1
+    assert main(["--init-config", "--force", "--config", str(chemin), str(tmp_path)]) == 0

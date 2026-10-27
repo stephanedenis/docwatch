@@ -264,3 +264,72 @@ def test_origine_non_autorisee(srv):
 def test_json_non_objet(srv):
     statut, _, _ = http(srv.base, "/pins", method="POST", payload="pas un objet")
     assert statut == 400
+
+
+def test_mounts_api(srv_multi):
+    statut, _, corps = http(srv_multi.base, "/mounts")
+    assert statut == 200
+    data = json.loads(corps)
+    assert [m["name"] for m in data["mounts"]] == ["premier", "second"]
+    assert data["mounts"][0]["path"] == str(srv_multi.root)
+    assert data["mounts"][1]["path"] == str(srv_multi.second)
+
+
+def test_multi_tree_et_rendu(srv_multi):
+    statut, _, corps = http(srv_multi.base, "/tree", path=str(srv_multi.second))
+    assert statut == 200
+    noms = {f["name"] for f in json.loads(corps)["files"]}
+    assert "guide2.md" in noms
+
+    statut, _, corps = http(srv_multi.base, "/render", path=str(srv_multi.second / "guide2.md"))
+    assert statut == 200
+    data = json.loads(corps)
+    assert "Guide 2" in data["body"]
+    assert 'href="/sub/intro2.md"' in data["body"]
+
+
+def test_multi_urls_virtuelles(srv_multi):
+    for chemin in ("/premier/guide.md", "/second/guide2.md", "/premier/", "/second/", "/"):
+        statut, entetes, corps = http(srv_multi.base, chemin)
+        assert statut == 200, chemin
+        assert entetes["Content-Type"].startswith("text/html")
+        assert b"docwatch" in corps
+    statut, _, _ = http(srv_multi.base, "/second/absent.md")
+    assert statut == 404
+    # Ancienne URL sans prefixe : on retrouve le montage qui contient le fichier.
+    statut, _, _ = http(srv_multi.base, "/guide2.md")
+    assert statut == 200
+    statut, _, _ = http(srv_multi.base, "/inconnu.md")
+    assert statut == 404
+
+
+def test_page_html_liens_de_montage(srv_multi):
+    _, _, corps = http(srv_multi.base, "/premier/guide.md")
+    assert b'href="/premier/"' in corps
+    assert b'href="/second/"' in corps
+
+
+def test_multi_pins_par_racine(srv_multi):
+    http(
+        srv_multi.base,
+        "/pins",
+        method="POST",
+        payload={"action": "add", "path": str(srv_multi.second), "kind": "folder"},
+    )
+    _, _, corps = http(srv_multi.base, "/pins", root=str(srv_multi.second))
+    data = json.loads(corps)
+    assert [p["path"] for p in data["pins"]["folders"]] == [str(srv_multi.second)]
+    _, _, corps = http(srv_multi.base, "/pins", root=str(srv_multi.root))
+    assert json.loads(corps)["pins"]["folders"] == []
+
+
+def test_multi_recent_par_racine(srv_multi):
+    _, _, corps = http(srv_multi.base, "/recent", heures="24", root=str(srv_multi.second))
+    noms = {e["name"] for e in json.loads(corps)["elements"]}
+    assert "guide2.md" in noms
+    assert "guide.md" not in noms
+
+    _, _, corps = http(srv_multi.base, "/recent", heures="24", root=str(srv_multi.root))
+    noms = {e["name"] for e in json.loads(corps)["elements"]}
+    assert "guide.md" in noms
+    assert "guide2.md" not in noms

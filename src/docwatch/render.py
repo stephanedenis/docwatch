@@ -18,6 +18,8 @@ import time
 from typing import Callable, Dict, Optional, Tuple
 from urllib.parse import quote, unquote
 
+from .config import DiagramSettings
+from .diagrams import preparer_texte, remplacer_placeholders
 from .paths import in_root
 
 #: Types servis par ``/asset``. La liste est volontairement fermée : un
@@ -60,7 +62,7 @@ _SCHEME_RE = re.compile(r"^[a-z][a-z0-9+.\-]*:", re.IGNORECASE)
 
 #: Marqueurs internes du rendu : un fichier absent ne doit pas être confondu
 #: avec une URL déjà réécrite.
-_DEJA_REECRIT = ("/asset?path=", "/?f=")
+_DEJA_REECRIT = ("/asset?path=", "/?f=", "/diagram/")
 
 
 def _decouper_url(valeur: str) -> Tuple[str, str]:
@@ -202,16 +204,22 @@ def render_markdown(text: str) -> str:
     return _charger_moteur()(text)
 
 
-def cached_render(path: str, cache_dir: str, force: bool = False) -> Tuple[str, bool]:
+def cached_render(
+    path: str,
+    cache_dir: str,
+    force: bool = False,
+    diagrammes: Optional[DiagramSettings] = None,
+) -> Tuple[str, bool]:
     """Rend le fichier en HTML, avec cache disque clé sur (chemin, mtime, taille).
 
     ``force=True`` ignore le cache : utile quand le fichier vient de changer et
-    qu'on veut être certain de rendre la dernière version.
+    qu'on veut être certain de rendre la dernière version. Si ``diagrammes`` est
+    fourni et actif, les blocs PlantUML/Mermaid sont convertis en SVG.
     """
     st = os.stat(path)
-    key = hashlib.sha256(("%s|%s|%s" % (path, st.st_mtime_ns, st.st_size)).encode()).hexdigest()[
-        :32
-    ]
+    actif = bool(diagrammes and diagrammes.enabled)
+    cle = "%s|%s|%s|d%d" % (path, st.st_mtime_ns, st.st_size, 1 if actif else 0)
+    key = hashlib.sha256(cle.encode()).hexdigest()[:32]
     cache_file = os.path.join(cache_dir, key + ".html")
     if not force and os.path.exists(cache_file):
         try:
@@ -221,7 +229,11 @@ def cached_render(path: str, cache_dir: str, force: bool = False) -> Tuple[str, 
             pass
     with open(path, "rb") as f:  # lecture seule, jamais d'écriture
         text = f.read().decode("utf-8", errors="replace")
+    if actif and diagrammes is not None:
+        text = preparer_texte(text, cache_dir, diagrammes)
     body = render_markdown(text)
+    if actif:
+        body = remplacer_placeholders(body)
     os.makedirs(cache_dir, exist_ok=True)
     tmp = cache_file + ".%d.tmp" % os.getpid()
     with open(tmp, "w", encoding="utf-8") as f:
