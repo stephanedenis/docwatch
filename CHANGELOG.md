@@ -30,6 +30,8 @@ Première version autonome, extraite de l'outillage documentaire de Drave.
   constantes noyées dans le script ;
 - les épingles sont écrites avec des permissions `0600` ;
 - les fichiers et dossiers cachés ne sont plus listés dans l'arborescence ;
+- `--config-dir` et `--cache-dir` désignent le répertoire **final** ; le
+  sous-dossier `mdserve` n'est ajouté qu'aux racines XDG par défaut ;
 - `mdopen` déduit la racine du dossier commun des fichiers et n'a plus de
   chemins d'installation codés en dur.
 

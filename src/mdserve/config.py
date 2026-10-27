@@ -76,18 +76,22 @@ def make_settings(
     if not 0 <= int(port) <= 65535:
         raise ValueError("port invalide : %s" % port)
 
-    cache = os.path.realpath(
-        os.path.expanduser(cache_dir) if cache_dir else _xdg("XDG_CACHE_HOME", ".cache")
-    )
-    config = os.path.realpath(
-        os.path.expanduser(config_dir) if config_dir else _xdg("XDG_CONFIG_HOME", ".config")
-    )
+    # Un répertoire fourni explicitement est utilisé TEL QUEL ; le sous-dossier
+    # `mdserve` n'est ajouté qu'aux racines XDG par défaut.
+    if cache_dir:
+        cache = os.path.realpath(os.path.expanduser(cache_dir))
+    else:
+        cache = os.path.join(_xdg("XDG_CACHE_HOME", ".cache"), "mdserve")
+    if config_dir:
+        config = os.path.realpath(os.path.expanduser(config_dir))
+    else:
+        config = os.path.join(_xdg("XDG_CONFIG_HOME", ".config"), "mdserve")
     return Settings(
         root=chemin,
         port=int(port),
         host=host,
-        cache_dir=os.path.join(cache, "mdserve"),
-        config_dir=os.path.join(config, "mdserve"),
+        cache_dir=cache,
+        config_dir=config,
     )
 
 
