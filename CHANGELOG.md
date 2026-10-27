@@ -29,6 +29,7 @@ Première version autonome, extraite de l'outillage documentaire de Drave.
 - le CSS et le JavaScript sont des fichiers statiques du paquet, plus des
   constantes noyées dans le script ;
 - les épingles sont écrites avec des permissions `0600` ;
+- les fichiers et dossiers cachés ne sont plus listés dans l'arborescence ;
 - `mdopen` déduit la racine du dossier commun des fichiers et n'a plus de
   chemins d'installation codés en dur.
 

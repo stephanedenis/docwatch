@@ -28,6 +28,11 @@ def test_image_dans_sous_dossier(monkeypatch, docs: Path):
     assert "/asset?path=%s" % (docs / "sub" / "pic.png") in html
 
 
+def test_image_absolue_resolue_contre_la_racine(docs: Path):
+    html = reecrire_assets('<img src="/img.svg">', str(docs / "sub"), str(docs))
+    assert "/asset?path=%s" % (docs / "img.svg") in html
+
+
 def test_lien_markdown_ouvre_le_lecteur(docs: Path):
     html = reecrire_assets('<a href="sub/intro.md">Intro</a>', str(docs), str(docs))
     assert "/?f=%s" % (docs / "sub" / "intro.md") in html
