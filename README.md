@@ -57,9 +57,9 @@ python3 -m venv .venv
 pip install -e ".[dev]"
 ```
 
-> La distribution PyPI s'appelle `docwatch` ; les commandes installées sont
-> `docwatch` et `docopen`. En attendant la publication, l'installation se fait
-> depuis GitHub.
+> Le nom PyPI `docwatch` est libre et la distribution est prête ; en attendant
+> la publication, l'installation se fait depuis GitHub. Les commandes installées
+> sont `docwatch` et `docopen`.
 
 ## Utilisation
 
