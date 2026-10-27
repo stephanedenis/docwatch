@@ -101,6 +101,12 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
             if self.command != "HEAD":
                 self.wfile.write(data)
 
+        def _redirect(self, location: str) -> None:
+            self.send_response(301)
+            self.send_header("Location", location)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
         def _lire_json(self, limite: int) -> Optional[Dict[str, Any]]:
             try:
                 length = int(self.headers.get("Content-Length") or 0)
@@ -287,6 +293,9 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
             # montage du panneau de gauche.
             cible_dossier = state.mount_from_url(u.path)
             if cible_dossier and os.path.isdir(cible_dossier[1]):
+                if not u.path.endswith("/"):
+                    location = u.path + "/" + (("?" + u.query) if u.query else "")
+                    return self._redirect(location)
                 return self._send(
                     200, page_html(state.mounts, state.root), "text/html; charset=utf-8"
                 )
