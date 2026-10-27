@@ -3,6 +3,13 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique.
 
+## [0.4.1] — 2026-10-27
+
+### Corrigé
+
+- une URL de dossier sans slash redirige vers sa forme avec slash
+  (`/drave` → `/drave/`), pour que la SPA charge le bon arbre.
+
 ## [0.4.0] — 2026-10-27
 
 ### Ajouté

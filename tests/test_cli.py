@@ -14,7 +14,7 @@ def test_version(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert "0.4.0" in capsys.readouterr().out
+    assert "0.4.1" in capsys.readouterr().out
 
 
 def test_liste_epingles_vide(tmp_path: Path, capsys):
