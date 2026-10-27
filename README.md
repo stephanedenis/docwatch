@@ -168,6 +168,22 @@ Les tests couvrent le rendu, le cache, la réécriture des liens et des images,
 les épingles, la traversée de chemins, les routes HTTP et les garde-fous
 (`Host`, `Origin`, méthodes refusées).
 
+## Publication PyPI
+
+Le nom `docwatch` est libre sur PyPI (vérifié le 27/10) et la distribution est
+prête :
+
+```bash
+pip install -e ".[dev]"
+python -m build
+python -m twine check dist/*
+python -m twine upload dist/*
+```
+
+Il faut un jeton PyPI (`~/.pypirc`, `TWINE_USERNAME=__token__` et
+`TWINE_PASSWORD`). La publication par *trusted publishing* GitHub Actions est
+possible sans jeton, mais demande de créer le projet sur PyPI au préalable.
+
 ## Origine
 
 `docwatch` (anciennement `mdserve`) est extrait de l'outillage de documentation
