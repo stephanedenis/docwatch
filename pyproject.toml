@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mdserve-local"
+dynamic = ["version"]
+description = "Lecteur Markdown local en lecture seule : arborescence, rendu, rechargement, épingles."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Stéphane Denis" }]
+keywords = ["markdown", "documentation", "viewer", "serveur", "local", "offline"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Documentation",
+    "Topic :: Text Processing :: Markup :: Markdown",
+]
+dependencies = ["mistune>=2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "build>=1.2"]
+
+[project.scripts]
+mdserve = "mdserve.cli:main"
+mdopen = "mdserve.mdopen:main"
+
+[project.urls]
+Homepage = "https://github.com/stephanedenis/mdserve"
+Source = "https://github.com/stephanedenis/mdserve"
+Issues = "https://github.com/stephanedenis/mdserve/issues"
+
+[tool.hatch.version]
+path = "src/mdserve/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mdserve"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]

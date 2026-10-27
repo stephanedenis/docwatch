@@ -1,0 +1,180 @@
+
+:root { color-scheme: light dark; }
+* { box-sizing: border-box; }
+/* Deux panneaux a hauteur fixe, chacun avec son propre defilement : la page
+   elle-meme ne defile jamais. Sans hauteur bornee, #side s'etirait a la
+   hauteur de son contenu et c'est tout le document qui defilait. */
+html, body { height:100%; }
+body { margin:0; overflow:hidden;
+       font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+#wrap { display:flex; height:100%; min-height:0; }
+#side { width:330px; min-width:230px; max-width:560px; resize:horizontal;
+        overflow-y:auto; overflow-x:hidden; min-height:0;
+        border-right:1px solid #8884; padding:.6rem .3rem 3.4rem; font-size:13.5px;
+        background:#8881; }
+#main { flex:1; min-width:0; min-height:0; overflow-y:auto; overflow-x:auto;
+        padding:2rem 2.4rem 6rem; max-width:75rem; line-height:1.65;
+        font-size:16.5px; }
+h1,h2,h3,h4 { line-height:1.25; margin-top:2.1em; font-weight:600; }
+h1 { border-bottom:1px solid #8884; padding-bottom:.3em; }
+h2 { border-bottom:1px solid #8883; padding-bottom:.25em; }
+code { font-family:"Hack","Fira Code",ui-monospace,monospace; font-size:.9em; background:#8881;
+       padding:.15em .35em; border-radius:4px; }
+pre { background:#8881; padding:1em 1.2em; border-radius:8px; overflow-x:auto; }
+pre code { background:none; padding:0; }
+blockquote { border-left:3px solid #8886; margin-left:0; padding-left:1.2em; opacity:.88; }
+table { border-collapse:collapse; margin:1.2em 0; display:block; overflow-x:auto; }
+th,td { border:1px solid #8885; padding:.45em .8em; }
+th { background:#8881; }
+img { max-width:100%; height:auto; }
+a { color:#4a9eff; }
+hr { border:none; border-top:1px solid #8884; margin:2.5em 0; }
+.dir { cursor:pointer; user-select:none; padding:.12rem 0; white-space:nowrap;
+       display:flex; align-items:center; gap:.15rem; }
+.dir:hover, .file:hover { background:#8882; }
+.dir .label { overflow:hidden; text-overflow:ellipsis; }
+/* compteur de documents retenus par le filtre temporel */
+.dir .cnt { margin-left:.35rem; font-size:10px; opacity:.6; flex-shrink:0;
+            background:#4a9eff33; border-radius:8px; padding:0 .35rem; }
+.pin {
+  margin-left:auto; cursor:pointer; opacity:0; font-size:11px; padding:0 .25rem;
+  border-radius:3px; flex-shrink:0;
+}
+.dir:hover .pin, .file:hover .pin { opacity:.55; }
+.pin:hover { opacity:1 !important; background:#8883; }
+.pin.on { opacity:1; }
+#pins { margin-bottom:.5rem; }
+#pins h3, #treehead h3 {
+  font-size:11px; text-transform:uppercase; letter-spacing:.06em; opacity:.55;
+  margin:.3rem 0 .3rem .2rem; font-weight:600;
+}
+.pinned {
+  display:flex; align-items:center; gap:.3rem; cursor:pointer; padding:.16rem .2rem;
+  border-radius:4px; white-space:nowrap;
+}
+.pinned:hover { background:#8882; }
+.pinned .pname { overflow:hidden; text-overflow:ellipsis; }
+.pinned .grp { opacity:.45; font-size:10.5px; padding-left:1.1rem; }
+.pinned.estfile .pname { font-style:italic; }
+#pinfile { font-size:11px; padding:.15rem .45rem; border-radius:4px;
+           border:1px solid #8885; background:none; color:inherit;
+           cursor:pointer; opacity:.75; }
+#pinfile:hover { opacity:1; background:#8882; }
+#pinfile.on { opacity:1; background:#4a9eff33; border-color:#4a9eff88; }
+.file .unseen, .file.unseen { }
+.pinned .pout { margin-left:auto; opacity:0; font-size:11px; padding:0 .25rem;
+                border-radius:3px; flex-shrink:0; }
+.pinned:hover .pout { opacity:.55; }
+.pinned .pout:hover { opacity:1 !important; background:#8883; }
+#treehead h3 { margin-top:.6rem; }
+/* menu contextuel (clic droit dans l'arbre) */
+#ctx { position:fixed; z-index:200; min-width:13rem; background:#2b2b2bee;
+       color:#eee; border:1px solid #8886; border-radius:6px; padding:.25rem;
+       box-shadow:0 6px 22px #0007; font-size:12.5px; backdrop-filter:blur(8px); }
+#ctx[hidden] { display:none; }
+#ctx .titre { padding:.3rem .6rem .35rem; font-weight:600; opacity:.65;
+              border-bottom:1px solid #8884; margin-bottom:.2rem;
+              overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+              max-width:19rem; }
+#ctx .item { padding:.32rem .6rem; border-radius:4px; cursor:pointer;
+             white-space:nowrap; }
+#ctx .item:hover { background:#4a9eff44; }
+#ctx .item.desactive { opacity:.4; cursor:default; }
+#ctx .item.desactive:hover { background:none; }
+
+/* filtre temporel */
+#filtrebar { display:flex; align-items:center; gap:.3rem; flex-wrap:wrap;
+             margin:.15rem 0 .4rem; font-size:11px; }
+#filtrebar input[type=number] { width:4.2rem; font:inherit; padding:.16rem .3rem;
+             border-radius:4px; border:1px solid #8885; background:#8881;
+             color:inherit; }
+#filtrebar input[type=number]:focus { outline:1px solid #4a9eff; }
+#filtrebar button { font-size:11px; padding:.16rem .5rem; border-radius:4px;
+             cursor:pointer; border:1px solid #8885; background:none;
+             color:inherit; opacity:.75; }
+#filtrebar button:hover { opacity:1; background:#8882; }
+#filtrebar button.on { opacity:1; background:#4a9eff33; border-color:#4a9eff88;
+             font-weight:600; }
+#filtreinfo { opacity:.6; margin:.1rem 0 .35rem; font-size:11px; }
+
+/* barre de chemin : ou l'on est, et de quoi remonter */
+#rootbar { display:flex; align-items:center; gap:.2rem; flex-wrap:wrap;
+           font-size:11.5px; margin:.1rem 0 .25rem; }
+#rootbar .crumb { cursor:pointer; padding:.12rem .3rem; border-radius:3px;
+                  border:1px solid #8885; background:none; color:inherit;
+                  font:inherit; max-width:11rem; overflow:hidden;
+                  text-overflow:ellipsis; white-space:nowrap; }
+#rootbar .crumb:hover { background:#8882; }
+#rootbar .sep { opacity:.4; }
+#rootbar .grow { margin-left:auto; }
+#rootbar .up { opacity:.7; }
+#rootbar .up:hover { opacity:1; }
+.pinned .pout, .pinned .popen { flex-shrink:0; }
+.pinbtn {
+  background:none; border:none; color:inherit; font:inherit; cursor:pointer;
+  font-size:11px; padding:.15rem .4rem; border-radius:3px; opacity:.8;
+}
+.pinbtn:hover { background:#8883; opacity:1; }
+.empty { opacity:.5; font-size:12px; padding:.2rem; }
+#sortbar { display:flex; align-items:center; gap:.25rem; margin:.1rem 0 .3rem; }
+#sortbar button {
+  font-size:11px; padding:.16rem .5rem; border-radius:4px; cursor:pointer;
+  border:1px solid #8885; background:none; color:inherit; opacity:.7;
+}
+#sortbar button:hover { opacity:1; background:#8882; }
+#sortbar button.on { opacity:1; background:#4a9eff33; border-color:#4a9eff88; font-weight:600; }
+#sortlabel { margin-left:auto; font-size:10.5px; opacity:.45; }
+.file { cursor:pointer; padding:.12rem 0 .12rem 0; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis; }
+.file.active { background:#4a9eff33; font-weight:600; }
+.children { margin-left:.85rem; border-left:1px solid #8883; padding-left:.35rem; }
+.size { opacity:.5; font-size:11px; margin-left:.4rem; }
+#meta { position:fixed; bottom:0; left:0; right:0; background:#8882; backdrop-filter:blur(6px);
+        font-size:11.5px; padding:.3rem .8rem; display:flex; gap:1rem; align-items:center; }
+#meta b { font-weight:600; }
+#fname { max-width:34%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#fmeta { opacity:.65; white-space:nowrap; }
+#frel { opacity:.8; white-space:nowrap; }
+#refresh { font-size:11px; padding:.15rem .5rem; border-radius:4px;
+           border:1px solid #8885; background:none; color:inherit; cursor:pointer; opacity:.75; }
+#refresh:hover { opacity:1; background:#8882; }
+#controls { margin-left:auto; display:flex; gap:.3rem; align-items:center; }
+#sound { font-size:11px; padding:.15rem .45rem; border-radius:4px;
+         border:1px solid #8885; background:none; color:inherit; cursor:pointer; opacity:.75; }
+#sound:hover { opacity:1; background:#8882; }
+#sound.off { opacity:.4; }
+/* clignotement de la barre a chaque rafraichissement automatique */
+@keyframes mdflash {
+  0%   { background:#4a9eff00; }
+  15%  { background:#4a9eff55; }
+  40%  { background:#4a9eff22; }
+  60%  { background:#4a9eff44; }
+  100% { background:#4a9eff00; }
+}
+#meta.flash { animation: mdflash 1.1s ease-out 1; }
+#meta.flash #frel { color:#4a9eff; }
+@media (prefers-reduced-motion: reduce) {
+  #meta.flash { animation: none; background:#4a9eff33; }
+}
+#upd { color:#4a9eff; font-weight:600; opacity:0; transition:opacity .25s; }
+#upd.on { opacity:1; }
+/* fichier ou dossier modifie depuis l'ouverture et pas encore consulte */
+.file.unseen, .dir.unseen { position:relative; }
+.file.unseen::before, .dir.unseen::before {
+  content:''; position:absolute; left:-.55rem; top:50%; margin-top:-3px;
+  width:7px; height:7px; border-radius:50%; background:#ff5c3a;
+  box-shadow:0 0 0 0 #ff5c3a88; animation:mdpulse 1.5s ease-out infinite;
+}
+/* le fichier affiche n'a plus a etre signale */
+.file.unseen.active::before { display:none; }
+@keyframes mdpulse {
+  0%   { opacity:1;   transform:scale(1);    box-shadow:0 0 0 0 #ff5c3a88; }
+  60%  { opacity:.55; transform:scale(.86);  box-shadow:0 0 0 5px #ff5c3a00; }
+  100% { opacity:1;   transform:scale(1);    box-shadow:0 0 0 0 #ff5c3a00; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .file.unseen::before, .dir.unseen::before { animation:none; opacity:.9; }
+}
+#side { position:relative; }
+#tree .file, #tree .dir { padding-left:.6rem; }
+.hint { opacity:.6; font-size:12.5px; padding:.4rem; }
