@@ -14,7 +14,7 @@ from importlib.resources import files
 
 
 def _lire_statique(nom: str) -> str:
-    return (files("mdserve") / "static" / nom).read_text(encoding="utf-8")
+    return (files("docwatch") / "static" / nom).read_text(encoding="utf-8")
 
 
 CSS = _lire_statique("style.css")
@@ -23,7 +23,7 @@ TREE_JS = _lire_statique("tree.js")
 
 def page_html(root: str) -> str:
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<title>mdserve \u2014 {html.escape(os.path.basename(root))}</title>
+<title>docwatch \u2014 {html.escape(os.path.basename(root))}</title>
 <style>{CSS}</style></head><body>
 <div id="wrap">
   <div id="side">
@@ -53,7 +53,7 @@ def page_html(root: str) -> str:
     </div>
     <div id="tree"></div>
   </div>
-  <div id="main"><h1>mdserve</h1>
+  <div id="main"><h1>docwatch</h1>
     <p>Lecteur Markdown en lecture seule sur <code>{html.escape(root)}</code>.</p>
     <p>Choisissez un fichier dans l'arbre, ou epinglez un dossier pour y
        revenir en un clic.</p></div>

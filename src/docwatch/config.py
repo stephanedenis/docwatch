@@ -77,15 +77,15 @@ def make_settings(
         raise ValueError("port invalide : %s" % port)
 
     # Un répertoire fourni explicitement est utilisé TEL QUEL ; le sous-dossier
-    # `mdserve` n'est ajouté qu'aux racines XDG par défaut.
+    # `docwatch` n'est ajouté qu'aux racines XDG par défaut.
     if cache_dir:
         cache = os.path.realpath(os.path.expanduser(cache_dir))
     else:
-        cache = os.path.join(_xdg("XDG_CACHE_HOME", ".cache"), "mdserve")
+        cache = os.path.join(_xdg("XDG_CACHE_HOME", ".cache"), "docwatch")
     if config_dir:
         config = os.path.realpath(os.path.expanduser(config_dir))
     else:
-        config = os.path.join(_xdg("XDG_CONFIG_HOME", ".config"), "mdserve")
+        config = os.path.join(_xdg("XDG_CONFIG_HOME", ".config"), "docwatch")
     return Settings(
         root=chemin,
         port=int(port),

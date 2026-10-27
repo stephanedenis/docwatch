@@ -3,9 +3,28 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique.
 
+## [0.2.0] — 2026-10-27
+
+### Modifié
+
+- **renommage du projet en `docwatch`** : distribution `docwatch`, module
+  `docwatch`, commandes `docwatch` et `docopen`, répertoires
+  `~/.config/docwatch` et `~/.cache/docwatch` ;
+- `serveur-doc.py` retiré de Drave : `docwatch` est désormais le seul serveur
+  de documentation du dépôt ;
+- `--config-dir` et `--cache-dir` désignent le répertoire **final** ; le
+  sous-dossier `docwatch` n'est ajouté qu'aux racines XDG par défaut ;
+- 64 tests, dont le lien absolu résolu contre la racine.
+
+### Conservé
+
+- arborescence chargée à la demande, rechargement toutes les 3 s, épingles,
+  filtre temporel, comparaison de jetons 64 bits, position de lecture conservée.
+
 ## [0.1.0] — 2026-10-27
 
-Première version autonome, extraite de l'outillage documentaire de Drave.
+Première version autonome, extraite de l'outillage documentaire de Drave et
+publiée sous le nom `mdserve-local`.
 
 ### Ajouté
 
@@ -30,12 +49,5 @@ Première version autonome, extraite de l'outillage documentaire de Drave.
   constantes noyées dans le script ;
 - les épingles sont écrites avec des permissions `0600` ;
 - les fichiers et dossiers cachés ne sont plus listés dans l'arborescence ;
-- `--config-dir` et `--cache-dir` désignent le répertoire **final** ; le
-  sous-dossier `mdserve` n'est ajouté qu'aux racines XDG par défaut ;
 - `mdopen` déduit la racine du dossier commun des fichiers et n'a plus de
   chemins d'installation codés en dur.
-
-### Conservé
-
-- arborescence chargée à la demande, rechargement toutes les 3 s, épingles,
-  filtre temporel, comparaison de jetons 64 bits, position de lecture conservée.

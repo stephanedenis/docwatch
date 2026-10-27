@@ -13,7 +13,7 @@ def test_page_accueil(srv):
     statut, entetes, corps = http(srv.base, "/")
     assert statut == 200
     assert entetes["Content-Type"].startswith("text/html")
-    assert b"<title>mdserve" in corps
+    assert b"<title>docwatch" in corps
     assert str(srv.root).encode() in corps
 
 

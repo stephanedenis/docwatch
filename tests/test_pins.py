@@ -7,7 +7,7 @@ import os
 import stat
 from pathlib import Path
 
-from mdserve.pins import (
+from docwatch.pins import (
     load_pins,
     pin_entry,
     pins_action,

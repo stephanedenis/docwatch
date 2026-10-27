@@ -10,7 +10,7 @@ fmt:
 	ruff format .
 
 run:
-	mdserve .
+	docwatch .
 
 build:
 	python -m build

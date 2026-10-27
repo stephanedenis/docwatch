@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from mdserve.paths import in_root, safe_bounded, safe_path
+from docwatch.paths import in_root, safe_bounded, safe_path
 
 
 def test_chemin_dans_la_racine(tmp_path: Path):

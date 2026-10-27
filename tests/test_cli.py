@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from mdserve.cli import main
-from mdserve.mdopen import _racine_commune
+from docwatch.cli import main
+from docwatch.docopen import _racine_commune
 
 
 def test_version(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert "0.1.0" in capsys.readouterr().out
+    assert "0.2.0" in capsys.readouterr().out
 
 
 def test_liste_epingles_vide(tmp_path: Path, capsys):
@@ -46,7 +46,7 @@ def test_racine_invalide(tmp_path: Path, capsys):
     assert "racine invalide" in capsys.readouterr().err
 
 
-def test_mdopen_racine_commune(tmp_path: Path):
+def test_docopen_racine_commune(tmp_path: Path):
     a = tmp_path / "a" / "x.md"
     b = tmp_path / "a" / "sub" / "y.md"
     assert _racine_commune([str(a), str(b)]) == str(tmp_path / "a")

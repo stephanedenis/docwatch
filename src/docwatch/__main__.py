@@ -1,4 +1,4 @@
-"""Permet ``python -m mdserve``."""
+"""Permet ``python -m docwatch``."""
 
 from .cli import main
 

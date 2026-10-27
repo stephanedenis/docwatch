@@ -1,12 +1,12 @@
 # Contribuer
 
-Merci de vouloir améliorer `mdserve`.
+Merci de vouloir améliorer `docwatch`.
 
 ## Mise en place
 
 ```bash
-git clone https://github.com/stephanedenis/mdserve.git
-cd mdserve
+git clone https://github.com/stephanedenis/docwatch.git
+cd docwatch
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -e ".[dev]"

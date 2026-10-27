@@ -1,4 +1,4 @@
-"""Point d'entrée en ligne de commande de ``mdserve``."""
+"""Point d'entrée en ligne de commande de ``docwatch``."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from .server import run
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="mdserve",
+        prog="docwatch",
         description="Lecteur Markdown local, en lecture seule : arborescence, "
         "rendu, rechargement automatique, épingles.",
         epilog="Les fichiers ne sont jamais ouverts en écriture. Le serveur "
@@ -37,10 +37,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--config-dir",
         default=None,
-        help="répertoire de configuration (défaut : XDG_CONFIG_HOME/mdserve)",
+        help="répertoire de configuration (défaut : XDG_CONFIG_HOME/docwatch)",
     )
     p.add_argument(
-        "--cache-dir", default=None, help="répertoire de cache (défaut : XDG_CACHE_HOME/mdserve)"
+        "--cache-dir", default=None, help="répertoire de cache (défaut : XDG_CACHE_HOME/docwatch)"
     )
     p.add_argument("--version", action="version", version="%(prog)s " + __version__)
     p.add_argument(
@@ -79,7 +79,7 @@ def _gerer_epingles(args: argparse.Namespace, state: State) -> int:
         pins = load_pins(state.pins_file)
         total = len(pins["folders"]) + len(pins["files"])
         if not total:
-            print("mdserve: aucune epingle")
+            print("docwatch: aucune epingle")
         for x in pins["folders"]:
             print("dossier   %s" % x["path"])
         for x in pins["files"]:
@@ -96,24 +96,24 @@ def _gerer_epingles(args: argparse.Namespace, state: State) -> int:
             brut = _resoudre(valeur, state.settings.root)
             p = safe_path(brut, state.settings.root)
             if not p or not os.path.exists(p):
-                print("mdserve: chemin invalide ou hors racine: %s" % valeur, file=sys.stderr)
+                print("docwatch: chemin invalide ou hors racine: %s" % valeur, file=sys.stderr)
                 return 1
             if kind == "file" and (not os.path.isfile(p) or not p.lower().endswith(".md")):
                 print(
-                    "mdserve: un document epingle doit etre un fichier .md: %s" % valeur,
+                    "docwatch: un document epingle doit etre un fichier .md: %s" % valeur,
                     file=sys.stderr,
                 )
                 return 1
             if kind == "folder" and not os.path.isdir(p):
-                print("mdserve: dossier inexistant: %s" % valeur, file=sys.stderr)
+                print("docwatch: dossier inexistant: %s" % valeur, file=sys.stderr)
                 return 1
             try:
                 pins_action(action, p, kind, state.pins_file)
             except OSError as exc:
-                print("mdserve: ecriture impossible: %s" % exc, file=sys.stderr)
+                print("docwatch: ecriture impossible: %s" % exc, file=sys.stderr)
                 return 1
             verbe = "epingle" if action == "add" else "retire"
-            print("mdserve: %s (%s) %s" % (verbe, kind, p))
+            print("docwatch: %s (%s) %s" % (verbe, kind, p))
     return 0
 
 
@@ -127,7 +127,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             config_dir=args.config_dir,
         )
     except ValueError as exc:
-        print("mdserve: %s" % exc, file=sys.stderr)
+        print("docwatch: %s" % exc, file=sys.stderr)
         return 2
 
     state = State(settings)
@@ -138,7 +138,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return run(state, open_browser=not args.no_browser)
     except OSError as exc:
         print(
-            "mdserve: impossible de demarrer sur le port %s: %s" % (settings.port, exc),
+            "docwatch: impossible de demarrer sur le port %s: %s" % (settings.port, exc),
             file=sys.stderr,
         )
         return 1

@@ -16,6 +16,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, Optional, Type
 
+from . import __version__
 from .config import State
 from .paths import safe_bounded, safe_path
 from .pins import load_pins, pins_action, pins_for_root, pins_with_mtime, prune_pins
@@ -47,7 +48,7 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
     """Construit la classe de handler liée à un :class:`State`."""
 
     class Handler(BaseHTTPRequestHandler):
-        server_version = "mdserve/0.1"
+        server_version = "docwatch/" + __version__
         protocol_version = "HTTP/1.1"
 
         def log_message(self, *args: Any) -> None:
@@ -371,8 +372,8 @@ def run(state: State, open_browser: bool = True) -> int:
     """Démarre le serveur et bloque jusqu'à Ctrl+C."""
     httpd = make_server(state)
     url = "http://127.0.0.1:%d/" % state.port
-    print("mdserve: %s" % state.root)
-    print("mdserve: %s   (Ctrl+C pour arreter)" % url)
+    print("docwatch: %s" % state.root)
+    print("docwatch: %s   (Ctrl+C pour arreter)" % url)
     if open_browser:
         try:
             webbrowser.open(url)
@@ -381,7 +382,7 @@ def run(state: State, open_browser: bool = True) -> int:
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nmdserve: arret")
+        print("\ndocwatch: arret")
     finally:
         httpd.server_close()
     return 0

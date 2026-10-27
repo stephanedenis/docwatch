@@ -458,7 +458,7 @@ function paintUnseen() {
 // Son discret de page tournee, synthetise (aucun fichier a charger).
 let audioCtx = null;
 let soundOn = true;
-try { soundOn = localStorage.getItem('mdserve.sound') !== '0'; } catch (e) {}
+try { soundOn = localStorage.getItem('docwatch.sound') !== '0'; } catch (e) {}
 
 function pageTurnSound() {
   if (!soundOn) return;
@@ -517,7 +517,7 @@ function toggleSoundIfNeeded() {
 
 function toggleSound() {
   soundOn = !soundOn;
-  try { localStorage.setItem('mdserve.sound', soundOn ? '1' : '0'); } catch (e) {}
+  try { localStorage.setItem('docwatch.sound', soundOn ? '1' : '0'); } catch (e) {}
   setSoundButton();
   if (soundOn) pageTurnSound();      // retour sonore immediat
 }
@@ -788,7 +788,7 @@ let currentFile = null;
 // 'date' = plus recent d'abord (defaut) ; 'nom' = alphabetique.
 let sortMode = 'date';
 try {
-  const saved = localStorage.getItem('mdserve.sort');
+  const saved = localStorage.getItem('docwatch.sort');
   if (saved === 'date' || saved === 'nom') sortMode = saved;
 } catch (e) { /* localStorage indisponible : on garde le defaut */ }
 
@@ -805,7 +805,7 @@ function sortEntries(list) {
 function setSort(mode) {
   if (mode !== 'date' && mode !== 'nom') return;
   sortMode = mode;
-  try { localStorage.setItem('mdserve.sort', mode); } catch (e) {}
+  try { localStorage.setItem('docwatch.sort', mode); } catch (e) {}
   document.querySelectorAll('#sortbar button').forEach(b => {
     b.classList.toggle('on', b.dataset.mode === mode);
   });

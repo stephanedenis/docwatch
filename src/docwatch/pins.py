@@ -1,6 +1,6 @@
 """Épingles : dossiers et documents en accès rapide.
 
-Le seul fichier que mdserve écrit (hors cache) est ``pins.json``. Il est
+Le seul fichier que docwatch écrit (hors cache) est ``pins.json``. Il est
 partagé entre toutes les racines servies : une épingle située hors de la vue
 courante est masquée, jamais supprimée.
 """

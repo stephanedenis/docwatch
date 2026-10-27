@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from mdserve.render import cached_render, freshness, reecrire_assets, render_markdown
+from docwatch.render import cached_render, freshness, reecrire_assets, render_markdown
 
 
 def test_table_rendue():

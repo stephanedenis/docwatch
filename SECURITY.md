@@ -1,6 +1,6 @@
 # Sécurité
 
-`mdserve` est un outil **local**, pas un serveur public.
+`docwatch` est un outil **local**, pas un serveur public.
 
 ## Modèle de sécurité
 

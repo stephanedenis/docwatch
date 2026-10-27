@@ -3,14 +3,14 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mdserve-local"
+name = "docwatch"
 dynamic = ["version"]
-description = "Lecteur Markdown local en lecture seule : arborescence, rendu, rechargement, épingles."
+description = "Service local d'affichage vivant pour collections de documents Markdown éditées par d'autres processus."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
 authors = [{ name = "Stéphane Denis" }]
-keywords = ["markdown", "documentation", "viewer", "serveur", "local", "offline"]
+keywords = ["markdown", "documentation", "viewer", "live", "watch", "reload", "local"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Web Environment",
@@ -33,19 +33,19 @@ dependencies = ["mistune>=2.0"]
 dev = ["pytest>=8", "ruff>=0.6", "build>=1.2"]
 
 [project.scripts]
-mdserve = "mdserve.cli:main"
-mdopen = "mdserve.mdopen:main"
+docwatch = "docwatch.cli:main"
+docopen = "docwatch.docopen:main"
 
 [project.urls]
-Homepage = "https://github.com/stephanedenis/mdserve"
-Source = "https://github.com/stephanedenis/mdserve"
-Issues = "https://github.com/stephanedenis/mdserve/issues"
+Homepage = "https://github.com/stephanedenis/docwatch"
+Source = "https://github.com/stephanedenis/docwatch"
+Issues = "https://github.com/stephanedenis/docwatch/issues"
 
 [tool.hatch.version]
-path = "src/mdserve/__init__.py"
+path = "src/docwatch/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mdserve"]
+packages = ["src/docwatch"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
