@@ -1235,7 +1235,8 @@ async function expandTo(target) {
 }
 
 // silent=true : rafraichissement en tache de fond, sans vider l'ecran
-async function openFile(path, el, silent) {
+async function openFile(path, el, silent, options) {
+  options = options || {};
   document.querySelectorAll('.file.active').forEach(x => x.classList.remove('active'));
   if (el) el.classList.add('active');
   currentFile = path;
@@ -1253,6 +1254,7 @@ async function openFile(path, el, silent) {
   const r = await fetch(url);
   if (r.status === 404) {
     curPath = null;
+    currentFile = null;
     curErr = 'fichier absent';
     document.getElementById('main').innerHTML =
       '<p class="hint">Ce fichier n’existe plus : ' + path + '</p>';
@@ -1283,6 +1285,20 @@ async function openFile(path, el, silent) {
   paintHeader();
   majBoutonEpingler();
 
+  // L'URL est le document courant : /docs/guide.md. On ne la change qu'apres
+  // un rendu reussi, pour qu'un lien casse ne deplace pas l'adresse.
+  const hash = options.hash || '';
+  if (!silent) {
+    if (options.replace) ecrireUrl(path, hash, true);
+    else if (options.push !== false) ecrireUrl(path, hash, false);
+  }
+  if (hash) {
+    const nextFrame = window.requestAnimationFrame
+      ? window.requestAnimationFrame.bind(window)
+      : (fn) => setTimeout(fn, 16);
+    nextFrame(() => defilerVers(hash));
+  }
+
   if (silent) {
     // signaler seulement si le texte affiche a bouge
     if (reallyChanged) {
@@ -1303,3 +1319,129 @@ async function openFile(path, el, silent) {
     nextFrame(tryRestore);
   }
 }
+
+
+// --- navigation SPA : l'URL porte le document courant --------------------
+// Une URL propre est relative a la racine de depart : /docs/guide.md. Les
+// anciennes URL /?f=/chemin/absolu restent acceptees et sont normalisees.
+
+function resoudreLien(href) {
+  if (!href || href.charAt(0) === '#') return null;
+  if (/^[a-z][a-z0-9+.\-]*:/i.test(href) || href.slice(0, 2) === '//') return null;
+  let chemin = href.split('#')[0].split('?')[0];
+  if (!chemin) return null;
+  try {
+    let base;
+    if (chemin.charAt(0) === '/') {
+      base = (borne || currentRoot || '').replace(/\/+$/, '');
+      chemin = chemin.replace(/^\/+/, '');
+    } else {
+      base = (currentFile || '').replace(/\/[^/]*$/, '') || (currentRoot || '');
+    }
+    const baseUrl = 'file://' + base.split('/').map(encodeURIComponent).join('/') + '/';
+    const u = new URL(chemin, baseUrl);
+    return decodeURIComponent(u.pathname);
+  } catch (e) {
+    return null;
+  }
+}
+
+function cheminRelatif(path) {
+  const base = (borne || '').replace(/\/+$/, '');
+  if (base && path.startsWith(base + '/')) {
+    return path.slice(base.length).split('/').map(encodeURIComponent).join('/');
+  }
+  return '/?f=' + encodeURIComponent(path);
+}
+
+function urlDocument(path, hash) {
+  return cheminRelatif(path) + (hash || '');
+}
+
+function ecrireUrl(path, hash, remplacer) {
+  const url = urlDocument(path, hash);
+  const actuel = location.pathname + location.search + location.hash;
+  if (actuel === url) return;
+  const etat = {path: path, hash: hash || ''};
+  if (remplacer) history.replaceState(etat, '', url);
+  else history.pushState(etat, '', url);
+}
+
+function defilerVers(hash) {
+  if (!hash) return;
+  let id = hash.charAt(0) === '#' ? hash.slice(1) : hash;
+  try { id = decodeURIComponent(id); } catch (e) {}
+  if (!id) return;
+  let cible = document.getElementById(id);
+  if (!cible) {
+    cible = Array.prototype.find.call(
+      document.querySelectorAll('a[name]'), (a) => a.name === id);
+  }
+  if (cible) cible.scrollIntoView({block: 'start'});
+}
+
+function fichierDepuisUrl() {
+  if (location.pathname.toLowerCase().endsWith('.md')) {
+    return resoudreLien(location.pathname);
+  }
+  return new URLSearchParams(location.search).get('f');
+}
+
+function pageAccueil() {
+  curPath = null;
+  currentFile = null;
+  curStat = null;
+  curErr = null;
+  document.querySelectorAll('.file.active').forEach(x => x.classList.remove('active'));
+  const main = document.getElementById('main');
+  if (main) {
+    main.innerHTML = '<h1>docwatch</h1>' +
+      '<p>Choisissez un fichier dans l\'arbre, ou epinglez un dossier pour y ' +
+      'revenir en un clic.</p>';
+  }
+  document.title = 'docwatch';
+  paintHeader();
+}
+
+function installerNavigation() {
+  const main = document.getElementById('main');
+  if (!main || main.dataset.nav === '1') return;
+  main.dataset.nav = '1';
+  main.addEventListener('click', (ev) => {
+    if (ev.defaultPrevented || ev.button !== 0 ||
+        ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    const a = ev.target.closest ? ev.target.closest('a[href]') : null;
+    if (!a || a.target === '_blank' || a.hasAttribute('download')) return;
+    const href = a.getAttribute('href') || '';
+    if (!href || href.charAt(0) === '#') return;
+    let u;
+    try { u = new URL(a.href, location.href); } catch (e) { return; }
+    if (u.origin !== location.origin) return;
+    if (u.pathname === '/' && u.searchParams.has('f')) {
+      ev.preventDefault();
+      openFile(u.searchParams.get('f'), null, false,
+               {hash: u.hash, push: true});
+      return;
+    }
+    if (!u.pathname.toLowerCase().endsWith('.md')) return;
+    const cible = resoudreLien(href);
+    if (!cible) return;
+    ev.preventDefault();
+    openFile(cible, null, false, {hash: u.hash, push: true});
+  });
+}
+
+window.addEventListener('popstate', () => {
+  const f = fichierDepuisUrl();
+  if (!f) {
+    if (curPath) pageAccueil();
+    return;
+  }
+  if (f === curPath) {
+    defilerVers(location.hash);
+    return;
+  }
+  openFile(f, null, false, {hash: location.hash, push: false});
+});
+
+installerNavigation();

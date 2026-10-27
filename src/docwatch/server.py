@@ -160,7 +160,7 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
                 except Exception as exc:  # noqa: BLE001 - on renvoie l'erreur au client
                     return self._send(500, {"error": "%s: %s" % (type(exc).__name__, exc)})
                 ms = round((time.perf_counter() - t0) * 1000)
-                body = reecrire_assets(body, os.path.dirname(p), state.root)
+                body = reecrire_assets(body, os.path.dirname(p), state.root, state.initial_root)
                 out: Dict[str, Any] = {"body": body, "path": p, "ms": ms, "cache": hit}
                 info = stat_info(p) or {}
                 # Le jeton reste côté client pour les contrôles suivants ; il
@@ -225,6 +225,17 @@ def make_handler(state: State) -> Type[BaseHTTPRequestHandler]:
 
             if u.path == "/status":
                 return self._send(200, {"root": state.root, "port": state.port})
+
+            # URL propre d'un document : /docs/guide.md. Le serveur renvoie la
+            # SPA, qui lit ce chemin et ouvre le fichier ; un rechargement, un
+            # favori ou un lien partagé fonctionne donc sans JavaScript côté
+            # serveur. La cible est validée sous la racine de départ.
+            if u.path.lower().endswith(".md"):
+                brut = os.path.join(state.initial_root, u.path.lstrip("/"))
+                p = safe_path(brut, state.initial_root)
+                if p and os.path.isfile(p):
+                    return self._send(200, page_html(state.root), "text/html; charset=utf-8")
+                return self._send(404, {"error": "document introuvable"})
 
             return self._send(404, {"error": "route inconnue"})
 

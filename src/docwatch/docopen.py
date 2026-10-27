@@ -146,7 +146,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     for f in fichiers:
-        url = "http://127.0.0.1:%d/?f=%s" % (args.port, quote(f))
+        rel = os.path.relpath(f, root).replace(os.sep, "/")
+        url = "http://127.0.0.1:%d/%s" % (args.port, quote(rel))
         if args.no_open:
             print(url)
         else:

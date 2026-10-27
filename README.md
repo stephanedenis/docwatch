@@ -17,15 +17,8 @@ Le nom dit ce qu'il fait : il **regarde** un ensemble de documents pendant que
 d'autres processus les écrivent, et il en montre l'état courant sans jamais
 toucher aux sources.
 
-```
-┌──────────────────────┬─────────────────────────────────────────────┐
-│ 🗂 Arborescence       │  # Titre du document                        │
-│  ▸ docs/             │                                             │
-│  ▸ reports/          │  Un tableau, des liens, des images…         │
-│  ▸ journal/          │                                             │
-│  ☆  fiches épinglées │  rendu par le navigateur, pas dans le terminal│
-└──────────────────────┴─────────────────────────────────────────────┘
-```
+L'interface tient en deux panneaux : l'arbre des documents à gauche, le document
+rendu à droite.
 
 ## Ce qu'il fait
 
@@ -37,7 +30,8 @@ toucher aux sources.
 | **Épingles** | dossiers **et** documents, stockés dans `~/.config/docwatch/pins.json` |
 | **Filtre temporel** | uniquement ce qui a bougé depuis 1 h, 24 h, 7 j ou N heures |
 | **Images et annexes** | SVG, PNG, PDF, CSS, polices… servis avec leur type MIME, résolus contre le dossier du document |
-| **Liens entre documents** | un lien vers un `.md` ouvre le document dans le lecteur, pas un 404 |
+| **Navigation** | URL propre par document (`/docs/guide.md`), clic sans rechargement, Retour/Avant, liens partagés |
+| **Liens entre documents** | un lien vers un `.md` ouvre le document dans le lecteur ; `../`, espaces, ancres et `%20` sont résolus contre le document courant |
 | **Lecture seule** | aucun fichier source n'est ouvert en écriture ; seules les épingles s'écrivent |
 | **Local par construction** | le serveur n'écoute que sur `127.0.0.1` et vérifie l'en-tête `Host` |
 
@@ -93,6 +87,21 @@ docwatch --list-pins                                # liste tout
 | `--pin`, `--unpin`, `--pin-file`, `--unpin-file`, `--list-pins` | gestion des épingles, sans lancer le serveur |
 | `--version` | version |
 
+## Navigation
+
+L'URL porte le document courant :
+
+```text
+http://127.0.0.1:8770/docs/guide.md
+http://127.0.0.1:8770/docs/synthese/05-la-pensee-sans-verbaliser.md#section
+```
+
+Cliquer un lien `.md` ne recharge pas la page : le client ouvre le document,
+met l'URL à jour (`history.pushState`) et les boutons Retour/Avant rejouent la
+navigation. Les anciennes URL `/?f=/chemin/absolu` sont acceptées et
+normalisées. Un lien relatif est résolu contre le **dossier du document
+courant** ; un lien absolu contre la **racine de départ**.
+
 ## Comment ça marche
 
 Le serveur est un `ThreadingHTTPServer` de la bibliothèque standard. Les routes
@@ -103,6 +112,7 @@ sont volontairement peu nombreuses :
 | `GET /` | la page (arbre + lecteur) |
 | `GET /tree?path=…` | un niveau d'arborescence |
 | `GET /render?path=…&force=0` | un document Markdown rendu en HTML |
+| `GET /<chemin>.md` | la SPA pour un document (URL propre, favoris, liens partagés) |
 | `GET /stat?path=…&token=…&dir_token=…` | comparaison de fraîcheur, sans rendu |
 | `GET /asset?path=…` | une image, un PDF, une police — type MIME vérifié |
 | `GET /pins` | les épingles visibles dans la racine courante |

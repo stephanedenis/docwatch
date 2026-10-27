@@ -4,8 +4,8 @@ Le serveur ne sert que du Markdown, mais un document Markdown référence des
 images, des feuilles de style, des PDF. Ces fichiers ne sont pas à la racine
 du serveur : ils sont à côté du document. On réécrit donc leurs URL vers
 ``/asset?path=…``, résolues contre le dossier du document. Les liens vers un
-autre document Markdown sont réécrits vers ``/?f=…`` pour s'ouvrir dans le
-lecteur au lieu de renvoyer un 404.
+autre document Markdown sont réécrits vers une URL propre (``/docs/guide.md``)
+pour s'ouvrir dans le lecteur au lieu de renvoyer un 404.
 """
 
 from __future__ import annotations
@@ -75,8 +75,16 @@ def _decouper_url(valeur: str) -> Tuple[str, str]:
     return chemin, suffixe
 
 
-def _url_asset(valeur: str, doc_dir: str, root: str, balise: str) -> Optional[str]:
-    """URL de remplacement pour un attribut, ou ``None`` pour le laisser tel quel."""
+def _url_asset(
+    valeur: str, doc_dir: str, root: str, initial_root: str, balise: str
+) -> Optional[str]:
+    """URL de remplacement pour un attribut, ou ``None`` pour le laisser tel quel.
+
+    Un lien absolu (``/docs/x.md``) est relatif à la **racine de départ** :
+    c'est elle qui définit l'arborescence du site, même quand la vue est
+    restreinte à un sous-dossier. Un lien relatif est relatif au dossier du
+    document. La cible doit rester sous la racine courante.
+    """
     valeur = valeur.strip()
     if not valeur or valeur.startswith("#"):
         return None
@@ -90,7 +98,7 @@ def _url_asset(valeur: str, doc_dir: str, root: str, balise: str) -> Optional[st
         return None
     brut = unquote(chemin)
     if brut.startswith("/"):
-        cible = os.path.realpath(os.path.join(root, brut.lstrip("/")))
+        cible = os.path.realpath(os.path.join(initial_root, brut.lstrip("/")))
     else:
         cible = os.path.realpath(os.path.join(doc_dir, brut))
     if not in_root(cible, root):
@@ -100,21 +108,28 @@ def _url_asset(valeur: str, doc_dir: str, root: str, balise: str) -> Optional[st
     if est_markdown:
         if balise.lower() != "a":
             return None
-        # On ouvre le document dans le lecteur, pas dans le navigateur.
+        # URL propre, relative à la racine de départ : /docs/guide.md.
+        # Le serveur sert la SPA sur ce chemin et le client ouvre le document.
+        if not in_root(cible, initial_root):
+            return None
+        rel = os.path.relpath(cible, initial_root).replace(os.sep, "/")
         fragment = "#" + valeur.split("#", 1)[1] if "#" in valeur else ""
-        return "/?f=%s%s" % (quote(cible), fragment)
+        return "/" + quote(rel) + fragment
     if os.path.splitext(cible)[1].lower() not in ALLOWED_ASSET_SUFFIXES:
         return None
     return "/asset?path=%s%s" % (quote(cible), suffixe)
 
 
-def reecrire_assets(html_txt: str, doc_dir: str, root: str) -> str:
+def reecrire_assets(
+    html_txt: str, doc_dir: str, root: str, initial_root: Optional[str] = None
+) -> str:
     """Réécrit les ``src``/``href`` relatifs vers les routes du serveur.
 
     - image ou fichier annexe autorisé -> ``/asset?path=…`` ;
-    - lien vers un ``.md`` -> ``/?f=…`` (ouverture dans le lecteur) ;
+    - lien vers un ``.md`` -> URL propre ``/docs/guide.md`` (la SPA l'ouvre) ;
     - URL absolue, ancre, schéma ou cible hors racine -> inchangé.
     """
+    initial_root = initial_root or root
 
     def remplacer_balise(m: "re.Match[str]") -> str:
         balise, attributs = m.group(1), m.group(2)
@@ -124,7 +139,7 @@ def reecrire_assets(html_txt: str, doc_dir: str, root: str) -> str:
             nom, valeur = a.group(1), a.group(2)
             if nom.lower() != attendu:
                 return a.group(0)
-            nouvelle = _url_asset(valeur, doc_dir, root, balise)
+            nouvelle = _url_asset(valeur, doc_dir, root, initial_root, balise)
             if nouvelle is None:
                 return a.group(0)
             return '%s="%s"' % (nom, nouvelle)

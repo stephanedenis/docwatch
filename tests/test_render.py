@@ -33,20 +33,38 @@ def test_image_absolue_resolue_contre_la_racine(docs: Path):
     assert "/asset?path=%s" % (docs / "img.svg") in html
 
 
-def test_lien_markdown_ouvre_le_lecteur(docs: Path):
+def test_lien_markdown_devient_une_url_propre(docs: Path):
     html = reecrire_assets('<a href="sub/intro.md">Intro</a>', str(docs), str(docs))
-    assert "/?f=%s" % (docs / "sub" / "intro.md") in html
-    assert 'href="sub/intro.md"' not in html
+    assert 'href="/sub/intro.md"' in html
+    assert "/?f=" not in html
 
 
 def test_lien_markdown_absolu(docs: Path):
     html = reecrire_assets('<a href="/sub/intro.md">Intro</a>', str(docs), str(docs))
-    assert "/?f=%s" % (docs / "sub" / "intro.md") in html
+    assert 'href="/sub/intro.md"' in html
 
 
 def test_lien_markdown_avec_fragment(docs: Path):
     html = reecrire_assets('<a href="sub/intro.md#partie">Intro</a>', str(docs), str(docs))
-    assert "/?f=%s#partie" % (docs / "sub" / "intro.md") in html
+    assert 'href="/sub/intro.md#partie"' in html
+
+
+def test_lien_markdown_remonte_le_dossier(docs: Path):
+    html = reecrire_assets('<a href="sub/../guide.md">Guide</a>', str(docs), str(docs))
+    assert 'href="/guide.md"' in html
+
+
+def test_lien_markdown_avec_espace(docs: Path):
+    (docs / "sub" / "mon doc.md").write_text("# mon doc", encoding="utf-8")
+    html = reecrire_assets('<a href="sub/mon%20doc.md">Doc</a>', str(docs), str(docs))
+    assert 'href="/sub/mon%20doc.md"' in html
+
+
+def test_lien_markdown_absolu_racine_initiale(docs: Path):
+    html = reecrire_assets(
+        '<a href="/sub/intro.md">Intro</a>', str(docs / "sub"), str(docs / "sub"), str(docs)
+    )
+    assert 'href="/sub/intro.md"' in html
 
 
 def test_url_externe_ancre_et_schema_inchanges(docs: Path):

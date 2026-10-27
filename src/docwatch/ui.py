@@ -103,12 +103,17 @@ def page_html(root: str) -> str:
   paintRootbar();
   // la racine n'est pas « depliee » : on ne scrute pas ses 39 enfants
   paintUnseen();
-  // ouverture directe : /?f=/chemin/absolu/fichier.md
-  const direct = new URLSearchParams(location.search).get('f');
-  if (direct) {{
-    const up = direct.lastIndexOf('/');
-    if (up > 0) await expandTo(direct.slice(0, up));   // devoile le chemin
-    openFile(direct, null);
+  // ouverture directe : URL propre /docs/guide.md, ou ancienne /?f=/abs
+  let cible = null;
+  if (location.pathname.toLowerCase().endsWith('.md')) {{
+    cible = resoudreLien(location.pathname);
+  }} else {{
+    cible = new URLSearchParams(location.search).get('f');
+  }}
+  if (cible) {{
+    const up = cible.lastIndexOf('/');
+    if (up > 0) await expandTo(cible.slice(0, up));   // devoile le chemin
+    await openFile(cible, null, false, {{replace: true, hash: location.hash}});
   }}
 }})();
 </script></body></html>"""

@@ -31,13 +31,24 @@ def test_arborescence(srv):
     assert isinstance(data["now"], int)
 
 
+def test_url_propre_document(srv):
+    statut, entetes, corps = http(srv.base, "/sub/intro.md")
+    assert statut == 200
+    assert entetes["Content-Type"].startswith("text/html")
+    assert b"docwatch" in corps
+    assert b"<title>docwatch" in corps
+
+    statut, _, _ = http(srv.base, "/sub/absent.md")
+    assert statut == 404
+
+
 def test_rendu_markdown_et_annexes(srv):
     statut, _, corps = http(srv.base, "/render", path=str(srv.root / "guide.md"))
     assert statut == 200
     data = json.loads(corps)
     assert "<table>" in data["body"]
     assert "/asset?path=%s" % (srv.root / "img.svg") in data["body"]
-    assert "/?f=%s" % (srv.root / "sub" / "intro.md") in data["body"]
+    assert 'href="/sub/intro.md"' in data["body"]
     assert data["cache"] is False
     assert data["name"] == "guide.md"
     assert int(data["token"]) > 0

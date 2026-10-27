@@ -3,6 +3,27 @@
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le
 versionnage sémantique.
 
+## [0.3.0] — 2026-10-27
+
+### Ajouté
+
+- **navigation SPA** : l'URL porte le document courant (`/docs/guide.md`) ;
+  cliquer un lien `.md` ne recharge plus la page, `pushState` tient l'historique,
+  et les boutons Retour/Avant fonctionnent ;
+- les fragments (`#section`) sont conservés et le défilement a lieu après le
+  rendu ;
+- les liens relatifs sont résolus contre le **document courant** (`../`, `./`,
+  espaces, `%20`) et les liens absolus contre la **racine de départ** ;
+- les anciennes URL `/?f=/chemin/absolu` restent acceptées et sont normalisées
+  vers l'URL propre ;
+- test navigateur automatisé (Chrome DevTools) : clic sans rechargement et
+  retour arrière ; 69 tests au total.
+
+### Modifié
+
+- les liens `.md` sont rendus en URL propre au lieu de `/?f=…` ; le serveur sert
+  la SPA sur `/<chemin>.md` pour qu'un favori ou un lien partagé fonctionne.
+
 ## [0.2.0] — 2026-10-27
 
 ### Modifié
